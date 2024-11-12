@@ -42,8 +42,8 @@ p {
     margin-top: 20px;
 }
 profile-photo {
-    width: 10%; /* Set the width to 400px */
-    height: 10%; /* Set the height to 400px */
+    width: 20px; /* Set the width to 400px */
+    height: 20px; /* Set the height to 400px */
     display: block; /* This allows margin auto to center the image */
     margin: 0 auto; /* Centers the image horizontally */
 }
