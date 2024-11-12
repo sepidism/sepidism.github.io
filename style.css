@@ -41,7 +41,7 @@ p {
     border-radius: 5px;
     margin-top: 20px;
 }
-.profile-photo {
+profile-photo {
     width: 20%; /* Set the width to 400px */
     height: 20%; /* Set the height to 400px */
     display: block; /* This allows margin auto to center the image */
