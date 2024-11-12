@@ -42,10 +42,12 @@ p {
     margin-top: 20px;
 }
 profile-photo {
-    width: 20px; /* Set the width to 400px */
-    height: 20px; /* Set the height to 400px */
-    display: block; /* This allows margin auto to center the image */
-    margin: 0 auto; /* Centers the image horizontally */
+    width: 10%;
+    max-width: 50px; /* Sets a limit so it doesn’t become too large */
+    height: auto;
+    border-radius: 50%;
+    float: left;
+    margin-right: 20px;
 }
 
 
