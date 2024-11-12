@@ -42,8 +42,8 @@ p {
     margin-top: 20px;
 }
 .profile-photo {
-    width: 20%; /* Adjust as needed */
-    max-width: 150px; /* Optional limit to prevent it from getting too large */
+    width: 10%; 
+    max-width: 120px; 
     height: auto; /* Maintains the aspect ratio */
     border-radius: 50%;
     margin-top: 20px;
