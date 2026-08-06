@@ -1,0 +1,379 @@
+<!DOCTYPE HTML>
+<!--
+	Spatial by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
+<html>
+
+<head>
+	<title>Building a Molecular Mechanism Q&A Agent — Sepideh Maleki</title>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="How I built a literature Q&A agent using LangGraph, RAG, MCP, and LangSmith observability — with lessons on chunking, retrieval, and agent reliability." />
+	<noscript>
+		<link rel="stylesheet" href="/css/style.css" />
+		<link rel="stylesheet" href="/css/skel.css" />
+		<link rel="stylesheet" href="/css/style-xlarge.css" />
+	</noscript>
+	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Raleway:400,700">
+	<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans">
+	<link rel="stylesheet" href="/css/font-awesome.min.css">
+	<!--[if lte IE 8]><script src="/js/html5shiv.js"></script><![endif]-->
+	<script src="/js/jquery.min.js"></script>
+	<script src="/js/skel.min.js"></script>
+	<script src="/js/skel-layers.min.js"></script>
+	<script src="/js/init.js"></script>
+	<style>
+		.post-meta {
+			text-align: center;
+			color: #999;
+			font-size: 0.85em;
+			margin-bottom: 3em;
+		}
+		.post-tag {
+			display: inline-block;
+			text-transform: uppercase;
+			font-size: 0.7em;
+			font-weight: 700;
+			letter-spacing: 0.05em;
+			color: #007cb3;
+			border: 1px solid #007cb3;
+			padding: 0.3em 0.8em;
+			border-radius: 20px;
+			margin-bottom: 1.5em;
+		}
+		.post-body code {
+			font-family: monospace;
+			background: #f5f5f8;
+			border: 1px solid #dddde2;
+			padding: 0.15em 0.4em;
+			border-radius: 4px;
+			font-size: 0.85em;
+			color: #d6336c;
+		}
+		.post-body pre {
+			background: #f5f5f8;
+			border: 1px solid #dddde2;
+			border-radius: 8px;
+			padding: 1.5em;
+			overflow-x: auto;
+			font-size: 0.82em;
+			line-height: 1.55;
+			margin: 1.5em 0;
+		}
+		.post-body pre code {
+			background: none;
+			border: none;
+			padding: 0;
+			color: #333;
+			font-size: 1em;
+		}
+		.post-body blockquote {
+			border-left: 4px solid #007cb3;
+			padding: 0.5em 0 0.5em 1.5em;
+			margin: 1.5em 0;
+			color: #666;
+			font-style: italic;
+			background: #f6f6f6;
+			border-radius: 0 8px 8px 0;
+		}
+		.post-body blockquote p {
+			margin-bottom: 0;
+		}
+		.arch-diagram {
+			background: #f5f5f8;
+			border: 1px solid #dddde2;
+			border-radius: 8px;
+			padding: 2em;
+			margin: 2em 0;
+			font-family: monospace;
+			font-size: 0.78em;
+			line-height: 1.5;
+			overflow-x: auto;
+			white-space: pre;
+			color: #555;
+		}
+		.post-body h2 {
+			margin-top: 2.5em;
+		}
+		.post-body ol, .post-body ul {
+			padding-left: 1.5em;
+			margin-bottom: 1.5em;
+		}
+		.post-body li {
+			margin-bottom: 0.6em;
+		}
+		.back-link {
+			text-align: center;
+			margin-top: 3em;
+			padding-top: 2em;
+			border-top: 1px solid rgba(144,144,144,0.25);
+		}
+	</style>
+</head>
+
+<body class="landing">
+
+	<!-- Header -->
+	<header id="header">
+		<ul class="icons">
+			<li>
+				<a href="https://scholar.google.com/citations?user=JSwHqtYAAAAJ&hl=en" class="icon fa-graduation-cap"></a>
+			</li>
+			<li>
+				<a href="https://github.com/sepidism" class="icon fa-github"></a>
+			</li>
+			<li>
+				<a href="https://www.linkedin.com/in/sepideh-maleki-08507460" class="icon fa-linkedin"></a>
+			</li>
+		</ul>
+		<nav id="nav">
+			<ul>
+				<li><a href="/">Home</a></li>
+				<li><a href="/blog.html" class="active">Blog</a></li>
+				<li><a href="/#two">Publications</a></li>
+				<li><a href="/#footer">Contact</a></li>
+			</ul>
+		</nav>
+	</header>
+
+	<!-- Blog Post -->
+	<section id="one" class="wrapper style1">
+		<div class="container 75%">
+			<div class="blog blogheader" style="text-align:center;">
+				<div class="post-tag">RAG · LangGraph · MCP · Observability</div>
+				<h2 style="font-size:2em; margin-bottom:0.5em;">Building a Molecular Mechanism Q&amp;A Agent</h2>
+				<div class="post-meta">Sepideh Maleki · August 2025 · 12 min read</div>
+			</div>
+
+			<div class="blog post-body">
+
+			<p>A scientist walks up to a system and asks: <em>"What's known about the mechanism of action of rapamycin?"</em> The system retrieves relevant literature, looks up the molecule in a database, synthesizes a grounded answer with citations, and flags any medical claims for human review before returning the result.</p>
+
+			<p>That's the agent I built. This post is about what I learned building it — the architecture decisions, the things that broke, and where the production patterns matter.</p>
+
+			<blockquote>
+				<p><strong>Why this project?</strong> I work on molecular perturbation prediction at Genentech. My day job is building ML models that predict how molecules behave when perturbed. But I kept noticing a gap: frontier models are incredible in papers, yet getting them to work reliably in production — with retrieval, tool use, observability, and safety checks — is a completely different skill. This project was my way of closing that gap.</p>
+			</blockquote>
+
+			<!-- ===== Architecture Overview ===== -->
+			<h3>The Architecture</h3>
+
+			<p>The agent has four layers, each mapping to a production concern:</p>
+
+			<div class="arch-diagram">Scientist Question
+       │
+       ▼
+┌──────────────────────────────────────┐
+│  LangGraph StateGraph                │  ← Orchestration
+│                                      │
+│  [Retrieve] ──→ [Assess]             │
+│       ▲            │                 │
+│       │            ▼                 │
+│       │      [Tool Call] ───────────► │  ← MCP Server
+│       │      (lookup molecule via     │     (wraps PubChem API)
+│       │       PubChem)               │
+│       │            │                 │
+│       └────←────[Synthesize]         │
+│                     │                │
+│                     ▼                │
+│              [Human Review]          │  ← Human-in-the-loop
+│                     │                │
+│                     ▼                │
+│              Answer + Citations       │
+└──────────────────────────────────────┘
+       │                    │
+       ▼                    ▼
+┌──────────────────────────────────────┐
+│  LangSmith Tracing + Evals            │  ← Observability
+│  • Full trace per node               │
+│  • Faithfulness scoring (LLM-judge)  │
+│  • Cost & latency per step           │
+│  • Hallucination flags                │
+└──────────────────────────────────────┘
+
+Corpus: Research papers (LaTeX → text)
+  → Semantic chunking by section
+  → bge-base-en-v1.5 embeddings
+  → ChromaDB + BM25 hybrid retrieval
+  → bge-reranker cross-encoder</div>
+
+			<p>I'll walk through each layer.</p>
+
+			<!-- ===== RAG ===== -->
+			<h3>Layer 1: RAG — The Knowledge Base</h3>
+
+			<p>The corpus is a set of research papers — my own NeurIPS submission on mechanism-aware mixture-of-experts plus a handful of related papers on molecular perturbation prediction. I control this corpus, which means I know what the right answers look like. That's important for evaluation.</p>
+
+			<h4>Chunking: The Most Underestimated Variable</h4>
+
+			<p>My first attempt was naive: fixed-size character splits at 1000 characters. The retrieval results were terrible. A chunk that ends mid-sentence gives the LLM an incomplete thought. A chunk that's too large drowns the relevant sentence in noise. I saw both failure modes immediately.</p>
+
+			<p>What actually worked: <strong>semantic chunking by section</strong>. Each chunk corresponds to one section of a paper — Introduction, Method, Experiments, etc. The key insight is that a section expresses one atomic concept. If someone asks "what method does this paper use?", the Method section is the right granularity — not a random 1000-character slice that might cut the method description in half.</p>
+
+			<p>I preserved metadata per chunk: paper title, section name, page number. This matters more than it seems — when the agent cites a source, the citation needs to trace back to a specific location, not just "some paper." In a pharma context, that traceability is non-negotiable.</p>
+
+			<h4>Hybrid Retrieval</h4>
+
+			<p>Semantic-only retrieval misses exact matches. If someone searches for "mTOR" or "rapamycin," keyword search finds those terms precisely where embedding similarity might rank them lower. BM25 (keyword) + dense vector search combined with Reciprocal Rank Fusion (RRF) gave noticeably better results than either approach alone.</p>
+
+			<p>The pipeline is: BM25 and vector search each return top-20 → RRF fuses the rankings → cross-encoder reranker (bge-reranker-base) re-scores the top candidates against the query → final top-5 chunks go to the LLM.</p>
+
+			<blockquote>
+				<p><strong>Lesson learned:</strong> Retrieval and reranking must use different models. First-stage retrieval (ANN search) is fast but imprecise. Reranking with a cross-encoder scores each query-document pair jointly, which is slower but dramatically more accurate. Don't try to make one model do both jobs.</p>
+			</blockquote>
+
+			<h4>Context Assembly</h4>
+
+			<p>I initially concatenated the top-5 chunks by retrieval score. Then I learned about the "lost in the middle" problem: models attend more reliably to the start and end of the context window. Chunks buried in the middle get less attention. So I started front-loading the most relevant chunk — the one with the highest reranker score goes first, not the one that scored highest in raw retrieval.</p>
+
+			<!-- ===== LangGraph ===== -->
+			<h3>Layer 2: LangGraph — The Orchestration</h3>
+
+			<p>This is where the agent stops being a pipeline and starts being an <em>agent</em>.</p>
+
+			<p>I used LangGraph's <code>StateGraph</code> with five nodes: <code>retrieve</code>, <code>assess</code>, <code>tool_call</code>, <code>synthesize</code>, and <code>human_review</code>. The shared state is a typed dictionary that carries the question, retrieved chunks, tool results, draft answer, and review flags across nodes.</p>
+
+			<p>The critical design choice is the <strong>cycle</strong>: the agent retrieves, assesses whether it has enough information, and if it needs molecule details it calls a tool — then it may retrieve again. This loop is why I chose LangGraph over plain LangChain. LangChain's linear chains can't express "retrieve, evaluate, maybe loop back" naturally. LangGraph's graph model handles it as a first-class citizen.</p>
+
+			<h4>Why not just LangChain?</h4>
+
+			<p>LangChain's <code>AgentExecutor</code> is deprecated (maintenance mode until December 2026). The modern path is <code>create_react_agent()</code> for simple patterns or LangGraph's <code>StateGraph</code> for anything with loops, branching, or shared state. My agent has all three. The choice was clear.</p>
+
+			<h4>Human-in-the-Loop</h4>
+
+			<p>The <code>human_review</code> node is a LangGraph checkpoint. If the <code>synthesize</code> node produces an answer containing a medical claim (detected via a simple classifier), the graph pauses. A human reviews the answer and either approves or sends it back for revision. This is LangGraph's killer feature for regulated industries: pause the graph, wait for approval, resume deterministically. You can't bolt this onto a linear chain.</p>
+
+			<p>In a real Genentech deployment, this checkpoint is where a scientist reviews any agent output before it feeds into a downstream system. The audit trail shows exactly which nodes fired, what was retrieved, and who approved the final answer.</p>
+
+			<!-- ===== MCP ===== -->
+			<h3>Layer 3: MCP — The Tool Interface</h3>
+
+			<p>The agent needs to look up molecule information — molecular formula, weight, synonyms, known interactions. I built a Model Context Protocol (MCP) server that wraps the PubChem REST API. It exposes one tool:</p>
+
+			<pre><code>Tool: lookup_molecule
+Input: { name: "rapamycin" }
+Output: {
+    name: "Sirolimus",
+    cid: 5284616,
+    molecular_formula: "C51H79NO13",
+    molecular_weight: 914.172,
+    synonyms: ["Rapamycin", "Sirolimus", ...],
+    description: "A macrolide..."
+}</code></pre>
+
+			<p>The server is ~50 lines of Python using the official <code>mcp</code> SDK, running over stdio (local transport — no auth needed for a demo). The agent calls it through LangChain's MCP adapter.</p>
+
+			<h4>Why MCP instead of a custom function?</h4>
+
+			<p>I could have written a plain Python function and passed it as a tool. But MCP gives you a standardized interface. Any agent — LangGraph, Claude, ChatGPT, Cursor — can call the same MCP server without custom integration. The tool description is registered once, and any model that speaks MCP can use it.</p>
+
+			<p>In production, this matters more. Instead of one PubChem tool, you'd have MCP servers wrapping internal compound databases, assay result APIs, clinical trial databases. Each one registered once, callable by any agent. The alternative — writing bespoke integrations for every model-tool pair — doesn't scale.</p>
+
+			<h4>Security considerations</h4>
+
+			<p>MCP has had real security issues: tool poisoning (malicious tool descriptions), prompt injection via tool outputs, and supply chain attacks through npm packages. For this demo with public data and local transport, the risk is minimal. But in production with proprietary data, I'd run MCP servers locally, enforce authentication on every server, and validate tool descriptions at registration time — not trust them implicitly at call time.</p>
+
+			<!-- ===== Observability ===== -->
+			<h3>Layer 4: Observability — LangSmith + Evals</h3>
+
+			<p>This is the layer that separates a demo from a production system.</p>
+
+			<blockquote>
+				<p><strong>The core problem:</strong> Traditional monitoring catches latency and errors. But the most dangerous failure mode in agentic systems is <em>silent success</em> — the agent follows flawed reasoning or hallucinates a tool call, and your metrics stay green. The output looks correct but came from broken reasoning. No latency chart will surface that.</p>
+			</blockquote>
+
+			<h4>Tracing</h4>
+
+			<p>Setting <code>LANGCHAIN_TRACING_V2=true</code> with a LangSmith API key gives me automatic tracing of every node execution: inputs, outputs, tool calls, intermediate reasoning, token usage, and cost per step. The LangSmith dashboard shows the full execution graph — which nodes fired, in what order, and what each one produced.</p>
+
+			<p>This is invaluable for debugging. When the agent returned a wrong answer, I could replay the exact execution path and see: <em>the retrieval node returned the wrong chunks because the BM25 query didn't match the paper's terminology</em>. Without tracing, I'd be guessing.</p>
+
+			<h4>Faithfulness Evaluation</h4>
+
+			<p>After the <code>synthesize</code> node, I run an LLM-as-judge evaluation: <em>"Is every claim in this answer supported by the retrieved context? Score 0.0 to 1.0."</em> The score is logged to LangSmith alongside the trace.</p>
+
+			<p>If faithfulness drops below 0.7, the answer is routed to the <code>human_review</code> node instead of being returned directly. This catches the "the answer sounds confident but isn't grounded in the retrieved documents" failure mode — which is the most common one in my experience.</p>
+
+			<h4>Building an Eval Dataset</h4>
+
+			<p>I created 12 question-answer pairs from my paper domain — questions I knew the correct answers to. For each, I measure:</p>
+
+			<ul>
+				<li><strong>Retrieval precision@5:</strong> Did the retriever return the right chunks?</li>
+				<li><strong>Faithfulness:</strong> Is the answer grounded in those chunks?</li>
+				<li><strong>Answer correctness:</strong> Does the answer match the known correct answer?</li>
+			</ul>
+
+			<p>This eval suite is how I know whether a change helps or hurts. Without it, I'm optimizing blindly. The rule I follow: change one variable at a time, run the eval suite, compare. Did switching from fixed-size to semantic chunking improve retrieval precision? The eval suite tells me — I don't have to eyeball it.</p>
+
+			<!-- ===== Lessons ===== -->
+			<h3>What I Learned</h3>
+
+			<ol>
+				<li>
+					<strong>Retrieval quality dominates generation quality.</strong> I spent more time on chunking, hybrid retrieval, and reranking than on prompt engineering. A better LLM can't fix garbage retrieval. This matches the research literature — a 2025 NAACL study found that tuning retrieval alone can improve task accuracy by over 50% with the same base model.
+				</li>
+				<li>
+					<strong>Agents need loops, and loops need state.</strong> The retrieve → assess → tool call → retrieve cycle is fundamental to how agents work. LangGraph's <code>StateGraph</code> makes this natural; LangChain's linear chains make it awkward. If your agent needs to decide "do I have enough information?", you need a graph, not a chain.
+				</li>
+				<li>
+					<strong>MCP is the right abstraction for tool interfaces.</strong> It decouples the tool from the agent framework. The same MCP server works with any model that speaks the protocol. In production, this means you can swap models without rewriting tool integrations.
+				</li>
+				<li>
+					<strong>Observability is not optional for agents.</strong> Silent success is the enemy. Without tracing and faithfulness evals, you can't distinguish "the agent worked" from "the agent produced a confident wrong answer." In a pharma context, that distinction is everything.
+				</li>
+				<li>
+					<strong>Human-in-the-loop is a feature, not a fallback.</strong> The checkpoint at <code>human_review</code> isn't there because the agent is bad. It's there because in a regulated context, some decisions should always have a human in the path. LangGraph's first-class support for this — pause, wait, resume — is what makes it production-ready for pharma.
+				</li>
+			</ol>
+
+			<!-- ===== What's Next ===== -->
+			<h3>What I'd Build Next</h3>
+
+			<p>This is a prototype with public data. The architecture maps directly to a production system at Genentech:</p>
+
+			<ul>
+				<li>The RAG corpus becomes internal protocols, SOPs, regulatory filings, and internal research reports — with access control so different teams see different documents.</li>
+				<li>The MCP server wraps internal compound databases, assay results, and clinical trial data instead of PubChem.</li>
+				<li>The human-in-the-loop checkpoint becomes mandatory for any output feeding into a regulated workflow.</li>
+				<li>The eval suite grows to hundreds of question-answer pairs, with automated regression testing on every model or prompt change.</li>
+				<li>Guardrails move from passive scoring (evals) to active blocking at the orchestration layer — intercepting PII leaks or ungrounded medical claims before they reach the user.</li>
+			</ul>
+
+			<p>The stack — LangGraph + MCP + LangSmith + hybrid RAG — is the architecture I'd reach for. Not because it's trendy, but because each layer solves a real problem I encountered building this prototype.</p>
+
+			<hr style="border:none; border-top:1px solid rgba(144,144,144,0.25); margin:2.5em 0;" />
+
+			<p style="font-style:italic; color:#999;"><em>This project was built to explore the production AI stack — RAG, agentic orchestration, MCP, and observability — applied to a domain I work in: molecular perturbation prediction. The code and architecture are mine; the opinions are based on what actually broke when I built it.</em></p>
+
+			</div>
+
+			<div class="back-link">
+				<a href="/blog.html" style="font-weight:700;">← Back to Blog</a>
+			</div>
+
+		</div>
+	</section>
+
+	<!-- Footer -->
+	<footer id="footer">
+		<div class="container">
+			<h2>Get in touch</h2>
+			<p><span style="font-weight: bold">Sepid [DOT] Maleki [AT] GMAIL [DOT] COM</span><br /> Foundational ML Research, Genentech<br />Research and Early Development (gRED), AI/ML</p>
+			<ul class="icons">
+				<li><a href="https://scholar.google.com/citations?user=JSwHqtYAAAAJ&hl=en" class="icon fa-graduation-cap"></a></li>
+				<li><a href="https://github.com/sepidism" class="icon fa-github"></a></li>
+				<li><a href="https://www.linkedin.com/in/sepideh-maleki-08507460" class="icon fa-linkedin"></a></li>
+			</ul>
+			<ul class="copyright">
+				<li>&copy; 2025 Sepideh Maleki</li>
+				<li>Design: <a href="http://templated.co">TEMPLATED</a></li>
+			</ul>
+		</div>
+	</footer>
+
+</body>
+
+</html>
